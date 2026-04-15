@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Plagiarism Detector</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --bg-deep: #04092f;
+    --bg-mid: #14124a;
+    --bg-soft: #eaebf9;
+    --card: rgba(255, 255, 255, 0.82);
+    --card-strong: rgba(255, 255, 255, 0.92);
+    --text-main: #0f1333;
+    --text-muted: #514972;
+    --text-soft: #857aa5;
+    --edge: rgba(43, 15, 51, 0.12);
+    --brand: #2951ff;
+    --brand-2: #8429ff;
+    --sun: #ff9f1c;
+    --safe: #2b1c9b;
+    --warn: #cc6f00;
+    --risk: #cc3d29;
+    --display: 'Bricolage Grotesque', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --shadow-soft: 0 18px 38px rgba(17, 4, 47, 0.14);
+  }
+
+  body {
+    min-height: 100vh;
+    font-family: var(--mono);
+    color: var(--text-main);
+    background: radial-gradient(circle at 12% 10%, #ffffff 0%, #dcd8ff 32%, #f1d8f8 100%);
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  .ambient {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+  }
+
+  .blob {
+    position: absolute;
+    filter: blur(50px);
+    opacity: 0.5;
+    border-radius: 50%;
+    animation: drift 18s ease-in-out infinite;
+  }
+
+  .blob.one {
+    width: 420px;
+    height: 420px;
+    background: #4e8bff;
+    left: -120px;
+    top: -140px;
+  }
+
+  .blob.two {
+    width: 360px;
+    height: 360px;
+    background: #d629d6;
+    right: -80px;
+    top: 120px;
+    animation-delay: -5s;
+  }
+
+  .blob.three {
+    width: 460px;
+    height: 460px;
+    background: #946fff;
+    left: 40%;
+    bottom: -220px;
+    animation-delay: -10s;
+  }
+
+  @keyframes drift {
+    0%, 100% { transform: translateY(0) scale(1); }
+    35% { transform: translateY(-20px) scale(1.06); }
+    65% { transform: translateY(24px) scale(0.96); }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 80;
+    padding: 1rem 1.5rem;
+    backdrop-filter: blur(12px);
+    background: rgba(236, 245, 251, 0.74);
+    border-bottom: 1px solid rgba(15, 34, 51, 0.08);
+  }
+
+  .header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-family: var(--display);
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  .brand-mark {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    background: radial-gradient(circle at 12% 10%, #ffffff 0%, #d8ecff 32%, #f8edd8 100%);
+    box-shadow: 0 0 0 4px rgba(0, 149, 200, 0.13);
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid rgba(15, 34, 51, 0.14);
+    border-radius: 999px;
+    padding: 0.36rem 0.78rem;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.74);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--safe);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.4rem 1.2rem 4.5rem;
+  }
+
+  .hero {
+    margin-bottom: 1.4rem;
+    animation: rise 0.8s ease both;
+  }
+
+  .hero h1 {
+    font-family: var(--display);
+    font-size: clamp(2rem, 4vw, 3.3rem);
+    line-height: 1.06;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.6rem;
+    max-width: 780px;
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    color: #087fac;
+  }
+
+  .hero p {
+    max-width: 760px;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }  .hero-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid rgba(15, 34, 51, 0.14);
+    background: rgba(255, 255, 255, 0.76);
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 0.34rem 0.68rem;
+    margin-bottom: 0.85rem;
+  }.app-shell {
+    background: rgba(255, 255, 255, 0.46);
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 60px rgba(4, 29, 47, 0.16);
+    padding: 1rem;
+    animation: rise 1s ease both;
+  }
+
+  .input-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .doc-panel {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--edge);
+    background: var(--card-strong);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.24s ease, box-shadow 0.24s ease;
+  }
+  .doc-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 36px rgba(4, 29, 47, 0.12);
+  }
+
+  .doc-head {
+    padding: 0.7rem 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--edge);
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(235,244,249,0.88));
+  }
+
+  .doc-title {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .token-count {
+    font-size: 0.68rem;
+    color: var(--text-soft);
+  }
+
+  .doc-body {
+    padding: 0.8rem;
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 206px;
+    resize: vertical;
+    border: 1px solid rgba(15, 34, 51, 0.13);
+    border-radius: 12px;
+    padding: 0.8rem;
+    font: 400 0.8rem/1.7 var(--mono);
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.94);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: rgba(0, 149, 200, 0.5);
+    box-shadow: 0 0 0 4px rgba(0, 149, 200, 0.12);
+  }
+
+  textarea::placeholder {
+    color: #91a6b5;
+  }
+
+  .file-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+  }
+
+  .file-row input[type="file"] {
+    width: 100%;
+    font: 500 0.7rem var(--mono);
+    color: var(--text-muted);
+  }
+
+  .file-row input[type="file"]::file-selector-button {
+    border: 1px solid rgba(15, 34, 51, 0.2);
+    background: #f7fbff;
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    margin-right: 0.6rem;
+    font: 500 0.68rem var(--mono);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .file-row input[type="file"]::file-selector-button:hover {
+    background: #e7f3fc;
+  }
+
+  .extract-note {
+    font-size: 0.69rem;
+    color: var(--text-soft);
+  }
+
+  .extract-note.ok {
+    color: var(--safe);
+  }
+
+  .controls {
+    margin-top: 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--edge);
+    background: var(--card-strong);
+    padding: 0.9rem;
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .controls-top {
+    display: flex;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }  .auto-pill {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(15, 34, 51, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    color: var(--text-muted);
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.4rem 0.72rem;
+  }.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    user-select: none;
+  }
+
+  .toggle input {
+    width: 34px;
+    height: 18px;
+    appearance: none;
+    background: #b9cad6;
+    border-radius: 999px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .toggle input:checked {
+    background: linear-gradient(90deg, var(--brand), var(--brand-2));
+  }
+
+  .toggle input::after {
+    content: '';
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s ease;
+  }
+
+  .toggle input:checked::after {
+    transform: translateX(16px);
+  }
+
+  .buttons {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.6rem;
+  }
+
+  button {
+    border: none;
+    cursor: pointer;
+    font: 500 0.72rem var(--mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 0.64rem 0.85rem;
+    transition: transform 0.12s ease, box-shadow 0.22s ease, filter 0.22s ease;
+  }
+
+  button:active {
+    transform: translateY(1px) scale(0.99);
+  }
+
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    filter: grayscale(15%);
+  }
+
+  .btn-primary {
+    color: #fff;
+    background: linear-gradient(96deg, #2b3cfc, #8400b7);
+    box-shadow: 0 9px 22px rgba(47, 0, 200, 0.32);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px rgba(47, 0, 200, 0.35);
+  }
+
+  .btn-alt {
+    color: #fff;
+    background: linear-gradient(96deg, #8100f0, #c846ff);
+    box-shadow: 0 9px 22px rgba(160, 0, 240, 0.3);
+  }
+
+  .btn-muted {
+    color: var(--text-main);
+    background: rgba(233, 244, 251, 0.96);
+    border: 1px solid rgba(15, 34, 51, 0.13);
+  }
+
+  .btn-inline {
+    font-size: 0.65rem;
+    padding: 0.4rem 0.72rem;
+    background: rgba(236, 247, 253, 0.94);
+    border: 1px solid rgba(15, 34, 51, 0.14);
+    color: #0d5e7f;
+    border-radius: 999px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .btn-inline:hover {
+    background: #dff2fd;
+  }
+
+  .loader {
+    display: none;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .loader.visible {
+    display: inline-flex;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 149, 200, 0.2);
+    border-top-color: var(--brand);
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .error-box {
+    display: none;
+    background: #fff1ed;
+    border: 1px solid #f6c1b2;
+    border-radius: 12px;
+    padding: 0.72rem 0.85rem;
+    color: #9b2f1c;
+    font-size: 0.75rem;
+  }
+
+  .error-box.visible {
+    display: block;
+  }
+
+  .results {
+    display: none;
+    margin-top: 1.2rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--edge);
+    background: var(--card-strong);
+    padding: 1rem;
+    animation: rise 0.5s ease;
+  }
+
+  .results.visible {
+    display: block;
+  }
+
+  .results-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .results-head h2 {
+    font-family: var(--display);
+    font-size: 1.35rem;
+    letter-spacing: -0.02em;
+  }
+
+  .results-head span {
+    font-size: 0.7rem;
+    color: var(--text-soft);
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+
+  .metric {
+    border-radius: 12px;
+    border: 1px solid rgba(15, 34, 51, 0.12);
+    background: #f8fcff;
+    padding: 0.8rem;
+  }
+
+  .metric .k {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.64rem;
+    color: var(--text-soft);
+    margin-bottom: 0.35rem;
+  }
+
+  .metric .v {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 1.65rem;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .metric .v.minimal { color: var(--safe); }
+  .metric .v.low { color: #6e7f8d; }
+  .metric .v.moderate { color: var(--warn); }
+  .metric .v.high { color: var(--risk); }
+
+  .meter {
+    margin-bottom: 1rem;
+  }
+
+  .meter-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+  }
+
+  .meter-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #dce8ef;
+  }
+
+  .meter-fill {
+    width: 0;
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .meter-fill.minimal { background: linear-gradient(90deg, #2cae66, #57ce8d); }
+  .meter-fill.low { background: linear-gradient(90deg, #91a5b5, #7e95a7); }
+  .meter-fill.moderate { background: linear-gradient(90deg, #d67d0b, #f3a62f); }
+  .meter-fill.high { background: linear-gradient(90deg, #d84b32, #ff7a33); }
+
+  .pills {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 0.52rem;
+    gap: 0.36rem;
+  }
+
+  .pill {
+    border-radius: 999px;
+    border: 1px solid rgba(15, 34, 51, 0.12);
+    padding: 0.34rem 0.5rem;
+    text-align: center;
+    font-size: 0.62rem;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: #f6fbff;
+  }
+
+  .pill.active-minimal { background: #1c9b5d; color: #fff; border-color: #1c9b5d; }
+  .pill.active-low { background: #6e7f8d; color: #fff; border-color: #6e7f8d; }
+  .pill.active-moderate { background: #d67d0b; color: #fff; border-color: #d67d0b; }
+  .pill.active-high { background: #d84b32; color: #fff; border-color: #d84b32; }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .panel {
+    border: 1px solid rgba(15, 34, 51, 0.13);
+    border-radius: 12px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .panel h3 {
+    padding: 0.62rem 0.76rem;
+    border-bottom: 1px solid rgba(15, 34, 51, 0.12);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.64rem;
+    color: var(--text-muted);
+    background: #f4faff;
+  }
+
+  .panel-body {
+    padding: 0.8rem;
+  }
+
+  .token-stream {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    max-height: 220px;
+    overflow: auto;
+  }
+
+  .tok {
+    border: 1px solid rgba(15, 34, 51, 0.12);
+    border-radius: 999px;
+    padding: 0.22rem 0.55rem;
+    font-size: 0.68rem;
+    background: #f4f9fd;
+    color: #3f5a6d;
+  }
+
+  .tok.match {
+    background: #fff2df;
+    color: #99591a;
+    border-color: #efca91;
+  }
+
+  .hint {
+    color: var(--text-soft);
+    font-size: 0.74rem;
+  }
+
+  #heatmap-wrap {
+    overflow: auto;
+    max-height: 300px;
+    border-radius: 9px;
+    border: 1px solid rgba(15, 34, 51, 0.1);
+    background: #f6fbff;
+  }
+
+  #heatmap-canvas {
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  .legend {
+    margin-top: 0.52rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.66rem;
+    color: var(--text-soft);
+  }
+
+  .legend-grad {
+    width: 120px;
+    height: 7px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f4fbff, #23b8bd, #f18d00);
+  }
+
+  .endpoint-note {
+    margin-top: 0.9rem;
+    font-size: 0.69rem;
+    color: var(--text-soft);
+  }
+
+  .endpoint-note code {
+    font-size: 0.66rem;
+    background: #eaf4fb;
+    border: 1px solid rgba(15, 34, 51, 0.12);
+    border-radius: 999px;
+    padding: 0.16rem 0.5rem;
+  }
+
+  @media (max-width: 980px) {
+    .workflow { grid-template-columns: 1fr; }
+    .input-grid,
+    .result-grid,
+    .metrics,
+    .buttons {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 720px) {
+    header { padding: 0.9rem 0.8rem; }
+    main { padding: 1.2rem 0.7rem 3rem; }
+    .app-shell { padding: 0.7rem; }
+    .input-grid,
+    .result-grid,
+    .metrics,
+    .buttons {
+      grid-template-columns: 1fr;
+    }
+    .hero h1 { font-size: clamp(1.7rem, 8vw, 2.4rem); }
+    
+</style>
+</head>
+<body>
+
+<div class="ambient" aria-hidden="true">
+  <div class="blob one"></div>
+  <div class="blob two"></div>
+  <div class="blob three"></div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      Plagiarism Detector
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <span class="hero-pill">Live Similarity Intelligence</span>
+    <h1>Originality <em>observatory</em> for your documents.</h1>
+    <p>Drop text or visual files and get instant, token-level similarity signals in a cleaner interface.</p>
+  </section>
+
+  
+
+  <section class="app-shell">
+    <div class="input-grid">
+      <article class="doc-panel">
+        <div class="doc-head">
+          <span class="doc-title">Document A</span>
+          <span class="token-count" id="tc1">0 tokens</span>
+        </div>
+        <div class="doc-body">
+          <textarea id="doc1" placeholder="Paste text or extract from visual file..."></textarea>
+          <div class="file-row">
+            <input id="file1" type="file" accept=".pdf,image/png,image/jpeg,image/webp" />
+            <button class="btn-inline" type="button" onclick="extractToDocument(1)">Extract A with VLM</button>
+          </div>
+          <p class="extract-note" id="extract-note-1">No extraction yet.</p>
+        </div>
+      </article>
+
+      <article class="doc-panel">
+        <div class="doc-head">
+          <span class="doc-title">Document B</span>
+          <span class="token-count" id="tc2">0 tokens</span>
+        </div>
+        <div class="doc-body">
+          <textarea id="doc2" placeholder="Paste text or extract from visual file..."></textarea>
+          <div class="file-row">
+            <input id="file2" type="file" accept=".pdf,image/png,image/jpeg,image/webp" />
+            <button class="btn-inline" type="button" onclick="extractToDocument(2)">Extract B with VLM</button>
+          </div>
+          <p class="extract-note" id="extract-note-2">No extraction yet.</p>
+        </div>
+      </article>
+    </div>
+
+    <div class="controls">
+      <div class="controls-top">
+        <label class="toggle">
+          <input type="checkbox" id="toggle-stopwords" />
+          Remove stop words
+        </label>
+        <span class="auto-pill">Backend link is automatic</span>
+      </div>
+
+      <div class="buttons">
+        <button id="btn-text" class="btn-primary" type="button" onclick="runTextAnalysis()">Analyze Text</button>
+        <button id="btn-visual" class="btn-alt" type="button" onclick="runVisualAnalysis()">Analyze Visual Docs</button>
+        <button class="btn-muted" type="button" onclick="loadDemo()">Load Demo</button>
+        <button class="btn-muted" type="button" onclick="clearAll()">Clear</button>
+      </div>
+
+      <div class="loader" id="loader">
+        <span class="spinner"></span>
+        <span id="loader-text">Working...</span>
+      </div>
+
+      <div class="error-box" id="error-box"></div>
+    </div>
+
+    <section class="results" id="results">
+      <div class="results-head">
+        <h2>Analysis Report</h2>
+        <span id="result-time">-</span>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="k">Similarity</div>
+          <div class="v" id="r-sim">-</div>
+        </div>
+        <div class="metric">
+          <div class="k">LCS Length</div>
+          <div class="v" id="r-lcs">-</div>
+        </div>
+        <div class="metric">
+          <div class="k">Doc A Tokens</div>
+          <div class="v low" id="r-t1">-</div>
+        </div>
+        <div class="metric">
+          <div class="k">Doc B Tokens</div>
+          <div class="v low" id="r-t2">-</div>
+        </div>
+      </div>
+
+      <div class="meter">
+        <div class="meter-top">
+          <span>Similarity score</span>
+          <span id="r-sim-pct">0%</span>
+        </div>
+        <div class="meter-track">
+          <div id="sim-fill" class="meter-fill"></div>
+        </div>
+        <div class="pills">
+          <div id="pill-minimal" class="pill">Minimal &lt;20%</div>
+          <div id="pill-low" class="pill">Low 20-50%</div>
+          <div id="pill-moderate" class="pill">Moderate 50-80%</div>
+          <div id="pill-high" class="pill">High &gt;80%</div>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <article class="panel">
+          <h3>Matched token sequence (LCS)</h3>
+          <div class="panel-body">
+            <div class="token-stream" id="match-tokens"></div>
+            <p class="hint" id="match-none" style="display:none;">
+              No matched sequence available for this run.
+            </p>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h3>DP matrix heatmap (up to 50x50)</h3>
+          <div class="panel-body">
+            <div id="heatmap-wrap">
+              <canvas id="heatmap-canvas"></canvas>
+            </div>
+            <div class="legend">
+              <span>0</span>
+              <span class="legend-grad"></span>
+              <span>max</span>
+            </div>
+            <p class="hint" id="heatmap-none" style="display:none; margin-top:0.5rem;">
+              Heatmap unavailable for large documents (optimized mode).
+            </p>
+          </div>
+        </article>
+      </div>
+
+    </section>
+  </section>
+</main>
+
+<script>
+function resolveApiBase() {
+const protocol = window.location.protocol.startsWith('http') ? window.location.protocol : 'http:';
+const host = window.location.hostname || 'localhost';
+return `${protocol}//${host}:8080/api`;
+}
+
+const API_BASE = resolveApiBase();
+
+const doc1El = document.getElementById('doc1');
+const doc2El = document.getElementById('doc2');
+const tc1El = document.getElementById('tc1');
+const tc2El = document.getElementById('tc2');
+const stopWordsEl = document.getElementById('toggle-stopwords');
+const loaderEl = document.getElementById('loader');
+const loaderTextEl = document.getElementById('loader-text');
+const errorBoxEl = document.getElementById('error-box');
+const resultsEl = document.getElementById('results');
+const btnTextEl = document.getElementById('btn-text');
+const btnVisualEl = document.getElementById('btn-visual');
+
+const DEMO_A = `The quick brown fox jumps over the lazy dog near the river bank. It was a sunny afternoon and the animals were enjoying the warm weather. The fox was known for its cleverness and speed, often outsmarting other animals in the forest.`;
+const DEMO_B = `A quick brown fox leaped over a lazy dog beside the river bank. The afternoon was sunny and warm, and many animals were out enjoying the pleasant weather. This particular fox was famous for its intelligence and agility, frequently outwitting the other forest creatures.`;
+
+function countTokens(text) {
+  const cleaned = text.trim();
+  return cleaned ? cleaned.split(/\s+/).length : 0;
+}
+
+function refreshTokenCounts() {
+  tc1El.textContent = `${countTokens(doc1El.value)} tokens`;
+  tc2El.textContent = `${countTokens(doc2El.value)} tokens`;
+}
+
+function setLoading(on, message) {
+  loaderTextEl.textContent = message || 'Working...';
+  loaderEl.classList.toggle('visible', on);
+  btnTextEl.disabled = on;
+  btnVisualEl.disabled = on;
+}
+
+function setError(message) {
+  if (!message) {
+    errorBoxEl.classList.remove('visible');
+    errorBoxEl.textContent = '';
+    return;
+  }
+  errorBoxEl.textContent = message;
+  errorBoxEl.classList.add('visible');
+}
+
+function setExtractionNote(slot, message, ok) {
+  const note = document.getElementById(`extract-note-${slot}`);
+  note.textContent = message;
+  note.classList.toggle('ok', !!ok);
+}
+
+async function parseJsonResponse(response) {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    return null;
+  }
+  return response.json().catch(() => null);
+}
+
+async function runTextAnalysis() {
+  const document1 = doc1El.value.trim();
+  const document2 = doc2El.value.trim();
+  const removeStopWords = stopWordsEl.checked;
+
+  if (!document1 || !document2) {
+    setError('Please provide text for both documents before analyzing.');
+    return;
+  }
+
+  setError('');
+  setLoading(true, 'Running LCS analysis on backend...');
+
+  try {
+    const response = await fetch(`${API_BASE}/compare`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document1, document2, removeStopWords })
+    });
+
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      throw new Error(payload?.error || `Request failed (${response.status})`);
+    }
+
+    renderResults(payload);
+  } catch (error) {
+    setError(`Text analysis failed: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function extractToDocument(slot) {
+  const fileInput = document.getElementById(slot === 1 ? 'file1' : 'file2');
+  const textArea = slot === 1 ? doc1El : doc2El;
+  const file = fileInput.files && fileInput.files[0];
+
+  if (!file) {
+    setError(`Select a file for Document ${slot === 1 ? 'A' : 'B'} first.`);
+    return;
+  }
+
+  setError('');
+  setLoading(true, `Extracting text from ${file.name} with Gemini VLM...`);
+
+  try {
+    const form = new FormData();
+    form.append('file', file);
+
+    const response = await fetch(`${API_BASE}/vlm/extract`, {
+      method: 'POST',
+      body: form
+    });
+
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      throw new Error(payload?.error || `Extraction failed (${response.status})`);
+    }
+
+    textArea.value = payload?.extractedText || '';
+    refreshTokenCounts();
+
+    const chars = (payload?.characterCount || textArea.value.length).toLocaleString();
+    setExtractionNote(slot, `Extracted ${chars} characters from ${file.name}.`, true);
+  } catch (error) {
+    setExtractionNote(slot, 'Extraction failed.', false);
+    setError(`VLM extraction failed: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function runVisualAnalysis() {
+  const file1 = document.getElementById('file1').files?.[0];
+  const file2 = document.getElementById('file2').files?.[0];
+
+  if (!file1 || !file2) {
+    setError('Select both visual files before running visual analysis.');
+    return;
+  }
+
+  setError('');
+  setLoading(true, 'Extracting both files with Gemini VLM and running LCS analysis...');
+
+  try {
+    const form = new FormData();
+    form.append('file1', file1);
+    form.append('file2', file2);
+    form.append('removeStopWords', String(stopWordsEl.checked));
+
+    const response = await fetch(`${API_BASE}/compare/visual`, {
+      method: 'POST',
+      body: form
+    });
+
+    const payload = await parseJsonResponse(response);
+    if (!response.ok) {
+      throw new Error(payload?.error || `Visual analysis failed (${response.status})`);
+    }
+
+    if (payload?.document1Text) {
+      doc1El.value = payload.document1Text;
+    }
+    if (payload?.document2Text) {
+      doc2El.value = payload.document2Text;
+    }
+    refreshTokenCounts();
+
+    setExtractionNote(1, `Visual compare used ${file1.name}.`, true);
+    setExtractionNote(2, `Visual compare used ${file2.name}.`, true);
+
+    renderResults(payload?.analysis || payload);
+  } catch (error) {
+    setError(`Visual analysis failed: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function getLevel(level) {
+  const value = String(level || 'MINIMAL').toLowerCase();
+  if (['minimal', 'low', 'moderate', 'high'].includes(value)) {
+    return value;
+  }
+  return 'minimal';
+}
+
+function renderResults(data) {
+  const similarity = Number(data?.similarityPercentage || 0);
+  const level = getLevel(data?.plagiarismLevel);
+
+  const simEl = document.getElementById('r-sim');
+  simEl.textContent = `${similarity.toFixed(1)}%`;
+  simEl.className = `v ${level}`;
+
+  document.getElementById('r-lcs').textContent = String(data?.lcsLength ?? 0);
+  document.getElementById('r-t1').textContent = String(data?.doc1TokenCount ?? 0);
+  document.getElementById('r-t2').textContent = String(data?.doc2TokenCount ?? 0);
+  document.getElementById('result-time').textContent = new Date().toLocaleTimeString();
+
+  const simFill = document.getElementById('sim-fill');
+  simFill.className = `meter-fill ${level}`;
+  simFill.style.width = '0%';
+  document.getElementById('r-sim-pct').textContent = `${similarity.toFixed(1)}%`;
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      simFill.style.width = `${Math.min(100, similarity)}%`;
+    }, 80);
+  });
+
+  ['minimal', 'low', 'moderate', 'high'].forEach((id) => {
+    const el = document.getElementById(`pill-${id}`);
+    el.className = `pill${id === level ? ` active-${id}` : ''}`;
+  });
+
+  renderMatchedTokens(data?.matchedSequence || []);
+  renderHeatmap(data?.dpMatrix || null);
+
+  resultsEl.classList.add('visible');
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderMatchedTokens(tokens) {
+  const stream = document.getElementById('match-tokens');
+  const none = document.getElementById('match-none');
+  stream.innerHTML = '';
+
+  if (!tokens || tokens.length === 0) {
+    none.style.display = 'block';
+    stream.style.display = 'none';
+    return;
+  }
+
+  none.style.display = 'none';
+  stream.style.display = 'flex';
+
+  const shown = tokens.slice(0, 220);
+  shown.forEach((token) => {
+    const chip = document.createElement('span');
+    chip.className = 'tok match';
+    chip.textContent = token;
+    stream.appendChild(chip);
+  });
+
+  if (tokens.length > shown.length) {
+    const more = document.createElement('span');
+    more.className = 'tok';
+    more.textContent = `+${tokens.length - shown.length} more`;
+    stream.appendChild(more);
+  }
+}
+
+function renderHeatmap(matrix) {
+  const canvas = document.getElementById('heatmap-canvas');
+  const none = document.getElementById('heatmap-none');
+
+  if (!matrix || !Array.isArray(matrix) || matrix.length === 0) {
+    canvas.style.display = 'none';
+    none.style.display = 'block';
+    return;
+  }
+
+  none.style.display = 'none';
+  canvas.style.display = 'block';
+
+  const rows = matrix.length;
+  const cols = matrix[0].length;
+
+  let maxVal = 1;
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      if (matrix[i][j] > maxVal) {
+        maxVal = matrix[i][j];
+      }
+    }
+  }
+
+  const cell = Math.max(2, Math.min(8, Math.floor(300 / Math.max(rows, cols))));
+  canvas.width = cols * cell;
+  canvas.height = rows * cell;
+  canvas.style.width = `${canvas.width}px`;
+  canvas.style.height = `${canvas.height}px`;
+
+  const ctx = canvas.getContext('2d');
+
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const t = matrix[i][j] / maxVal;
+      const r = Math.round(244 + (241 - 244) * t);
+      const g = Math.round(250 + (141 - 250) * t);
+      const b = Math.round(255 + (0 - 255) * t);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(j * cell, i * cell, cell, cell);
+    }
+  }
+}
+
+function loadDemo() {
+  doc1El.value = DEMO_A;
+  doc2El.value = DEMO_B;
+  setExtractionNote(1, 'Demo text loaded.', true);
+  setExtractionNote(2, 'Demo text loaded.', true);
+  refreshTokenCounts();
+}
+
+function clearAll() {
+  doc1El.value = '';
+  doc2El.value = '';
+  document.getElementById('file1').value = '';
+  document.getElementById('file2').value = '';
+  setExtractionNote(1, 'No extraction yet.', false);
+  setExtractionNote(2, 'No extraction yet.', false);
+  resultsEl.classList.remove('visible');
+  setError('');
+  refreshTokenCounts();
+}
+
+doc1El.addEventListener('input', refreshTokenCounts);
+doc2El.addEventListener('input', refreshTokenCounts);
+document.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    runTextAnalysis();
+  }
+});
+
+refreshTokenCounts();
+</script>
+
+</body>
+</html>
+
+
